@@ -17,7 +17,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   required,
   ...props
 }, ref) => {
-  const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`
+  const rid = React.useId()
+  const inputId = id ?? `input-${rid}`
 
   const baseStyles = 'touch-target block w-full px-3 py-2.5 text-base border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed'
 

@@ -26,7 +26,8 @@ export function Select({
   placeholder,
   ...props
 }: SelectProps) {
-  const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`
+  const rid = React.useId()
+  const selectId = id ?? `select-${rid}`
 
   const baseStyles = 'touch-target block w-full px-3 py-2.5 text-base border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed bg-background'
 

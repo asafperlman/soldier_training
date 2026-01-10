@@ -77,3 +77,39 @@ export const ITEMS_PER_PAGE = 50
 
 // Performance
 export const ANALYTICS_CACHE_MINUTES = 5
+
+// Data Entry Validation
+export const VALIDATION_MESSAGES = {
+  REQUIRED_FIELD: 'שדה חובה',
+  INVALID_EMAIL: 'דוא״ל לא תקין',
+  INVALID_NUMBER: 'ערך מספרי לא תקין',
+  VALUE_OUT_OF_RANGE: (min: number, max: number) => `ערך חייב להיות בין ${min} ל-${max}`,
+  VALUE_TOO_LOW: (min: number) => `ערך חייב להיות לפחות ${min}`,
+  VALUE_TOO_HIGH: (max: number) => `ערך חייב להיות מקסימום ${max}`,
+  SAVE_SUCCESS: 'נשמר בהצלחה',
+  SAVE_ERROR: 'שגיאה בשמירה',
+  SELECT_TRAINING_TYPE: 'בחר סוג אימון',
+  SELECT_CLASS: 'בחר כיתה',
+} as const
+
+// Empty States
+export const EMPTY_STATES = {
+  NO_TRAINING_TYPES: 'אין סוגי אימון',
+  NO_CLASSES: 'אין כיתות',
+  NO_SOLDIERS: 'אין חיילים בכיתה זו',
+  NO_EXCEPTIONS: 'אין חריגים',
+  NO_DATA: 'אין מספיק נתונים להציג',
+  NO_TRAINING_SESSIONS: 'אין אימונים עדיין',
+} as const
+
+// Training Input Constraints
+export const TRAINING_CONSTRAINTS = {
+  SECONDS_MIN: 0,
+  SECONDS_MAX: 300,
+  SCORE_MIN: 0,
+  SCORE_MAX: 100,
+} as const
+
+// Auto-save Debounce
+export const AUTO_SAVE_DEBOUNCE_MS = 300
+export const SUCCESS_INDICATOR_DURATION_MS = 2000

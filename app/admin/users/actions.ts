@@ -1,18 +1,35 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export async function createUser(formData: FormData) {
-  const supabase = await createClient()
+  // Step 1: Verify caller is system_admin
+  const callerClient = await createClient()
+  const { data: { user: callerUser }, error: authError } = await callerClient.auth.getUser()
 
+  if (authError || !callerUser) {
+    return { error: 'לא מאומת' }
+  }
+
+  const { data: callerProfile, error: profileError } = await callerClient
+    .from('user_profiles')
+    .select('role')
+    .eq('user_id', callerUser.id)
+    .single()
+
+  if (profileError || callerProfile?.role !== 'system_admin') {
+    return { error: 'רק מנהל מערכת יכול ליצור משתמשים' }
+  }
+
+  // Step 2: Validate input
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const role = formData.get('role') as string
   const companyId = formData.get('companyId') as string | null
   const departmentId = formData.get('departmentId') as string | null
 
-  // Validation
   if (!email || !password || !role) {
     return { error: 'נא למלא את כל השדות' }
   }
@@ -25,18 +42,20 @@ export async function createUser(formData: FormData) {
     return { error: 'נא לבחור מחלקה עבור תפקיד מ״מ' }
   }
 
-  // Create auth user (using admin API)
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+  // Step 3: Create auth user using admin client with service role
+  const adminClient = createAdminClient()
+  const { data: authData, error: createAuthError } = await adminClient.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
+    user_metadata: { role },
   })
 
-  if (authError || !authData.user) {
-    return { error: authError?.message || 'שגיאה ביצירת משתמש' }
+  if (createAuthError || !authData.user) {
+    return { error: createAuthError?.message || 'שגיאה ביצירת משתמש' }
   }
 
-  // Create user profile
+  // Step 4: Create user profile
   const profileData: any = {
     user_id: authData.user.id,
     role,
@@ -52,12 +71,14 @@ export async function createUser(formData: FormData) {
     profileData.department_id = departmentId
   }
 
-  const { error: profileError } = await supabase.from('user_profiles').insert(profileData)
+  const { error: insertProfileError } = await adminClient
+    .from('user_profiles')
+    .insert(profileData)
 
-  if (profileError) {
+  if (insertProfileError) {
     // Rollback: delete auth user
-    await supabase.auth.admin.deleteUser(authData.user.id)
-    return { error: 'שגיאה ביצירת פרופיל משתמש: ' + profileError.message }
+    await adminClient.auth.admin.deleteUser(authData.user.id)
+    return { error: 'שגיאה ביצירת פרופיל משתמש: ' + insertProfileError.message }
   }
 
   revalidatePath('/admin/users')

@@ -1,5 +1,6 @@
 import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/Common'
 import { CreateUserForm } from '@/components/Admin/CreateUserForm'
 import { ROLE_LABELS } from '@/lib/constants'
@@ -8,6 +9,7 @@ export default async function AdminUsersPage() {
   await requireRole(['system_admin'])
 
   const supabase = await createClient()
+  const adminClient = createAdminClient()
 
   // Fetch companies and departments for the form
   const [{ data: companies }, { data: departments }] = await Promise.all([
@@ -30,11 +32,11 @@ export default async function AdminUsersPage() {
     .in('role', ['company', 'department'])
     .order('created_at', { ascending: false })
 
-  // Get email addresses for users (need to query auth.users)
+  // Get email addresses for users using admin client
   const usersWithEmails = users
     ? await Promise.all(
         users.map(async (user) => {
-          const { data: authUser } = await supabase.auth.admin.getUserById(user.user_id)
+          const { data: authUser } = await adminClient.auth.admin.getUserById(user.user_id)
           return {
             ...user,
             email: authUser?.user?.email || 'לא ידוע',

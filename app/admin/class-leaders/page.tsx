@@ -1,5 +1,6 @@
 import { requireRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/Common'
 import { ClassLeadersManagement } from '@/components/Admin/ClassLeadersManagement'
 
@@ -7,6 +8,7 @@ export default async function ClassLeadersPage() {
   const profile = await requireRole(['department'])
 
   const supabase = await createClient()
+  const adminClient = createAdminClient()
 
   // Fetch classes in the department
   const { data: classes } = await supabase
@@ -28,11 +30,11 @@ export default async function ClassLeadersPage() {
     .eq('department_id', profile.department_id!)
     .order('created_at', { ascending: false })
 
-  // Get email addresses and normalize classes data
+  // Get email addresses using admin client and normalize classes data
   const leadersWithEmails = classLeaders
     ? await Promise.all(
         classLeaders.map(async (leader) => {
-          const { data: authUser } = await supabase.auth.admin.getUserById(leader.user_id)
+          const { data: authUser } = await adminClient.auth.admin.getUserById(leader.user_id)
           const classesData = leader.classes as any
           return {
             user_id: leader.user_id,

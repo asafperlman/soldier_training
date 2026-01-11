@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function saveTrainingAttempt(
   soldierId: string,
-  trainingTypeId: string,
+  activityId: string,
   value: number | boolean
 ) {
   const supabase = await createClient()
@@ -54,23 +54,29 @@ export async function saveTrainingAttempt(
     throw new Error('אין הרשאה לערוך חייל זה')
   }
 
-  // Get training type details
-  const { data: trainingType, error: typeError } = await supabase
-    .from('training_types')
-    .select('unit_type')
-    .eq('id', trainingTypeId)
+  // Get activity details and verify it belongs to user's company
+  const { data: activity, error: activityError } = await supabase
+    .from('company_activities')
+    .select('company_id, is_active')
+    .eq('id', activityId)
     .single()
 
-  if (typeError || !trainingType) {
-    throw new Error('סוג אימון לא נמצא')
+  if (activityError || !activity) {
+    throw new Error('פעילות לא נמצאה')
   }
 
-  // Validate value type matches unit_type
-  if (trainingType.unit_type === 'boolean' && typeof value !== 'boolean') {
-    throw new Error('ערך חייב להיות בוליאני')
+  if (!activity.is_active) {
+    throw new Error('פעילות זו אינה פעילה')
   }
 
-  if ((trainingType.unit_type === 'seconds' || trainingType.unit_type === 'score') && typeof value !== 'number') {
+  // Verify activity belongs to soldier's company (security check)
+  const soldierCompanyId = (soldier.classes as any)?.departments?.company_id
+  if (activity.company_id !== soldierCompanyId && userProfile.role !== 'system_admin') {
+    throw new Error('אין הרשאה לשמור נתונים לפעילות זו')
+  }
+
+  // All activities are time-based (seconds), validate accordingly
+  if (typeof value !== 'number') {
     throw new Error('ערך חייב להיות מספרי')
   }
 
@@ -80,7 +86,7 @@ export async function saveTrainingAttempt(
   const { data: existingSession, error: sessionError } = await supabase
     .from('training_sessions')
     .select('id, attempts')
-    .eq('training_type_id', trainingTypeId)
+    .eq('activity_id', activityId)
     .eq('soldier_id', soldierId)
     .eq('session_date', today)
     .maybeSingle()
@@ -94,11 +100,8 @@ export async function saveTrainingAttempt(
     const attempts = existingSession.attempts || []
     const newAttempts = [...attempts, value]
 
-    // Recalculate best and avgAfterBest
-    const { best, avgAfterBest, pass } = calculateSessionMetrics(
-      newAttempts,
-      trainingType.unit_type as 'seconds' | 'boolean' | 'score'
-    )
+    // Recalculate best and avgAfterBest (all activities are seconds-based)
+    const { best, avgAfterBest, pass } = calculateSessionMetrics(newAttempts, 'seconds')
 
     const { error: updateError } = await supabase
       .from('training_sessions')
@@ -116,13 +119,10 @@ export async function saveTrainingAttempt(
   } else {
     // Create new session
     const attempts = [value]
-    const { best, avgAfterBest, pass } = calculateSessionMetrics(
-      attempts,
-      trainingType.unit_type as 'seconds' | 'boolean' | 'score'
-    )
+    const { best, avgAfterBest, pass } = calculateSessionMetrics(attempts, 'seconds')
 
     const { error: insertError } = await supabase.from('training_sessions').insert({
-      training_type_id: trainingTypeId,
+      activity_id: activityId,
       soldier_id: soldierId,
       session_date: today,
       attempts,

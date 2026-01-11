@@ -10,11 +10,11 @@ import { saveTrainingAttempt } from './actions'
 
 type Step = 'training-type' | 'class-selection' | 'soldier-entry'
 
-interface TrainingType {
+interface Activity {
   id: string
-  name: string
-  category: string | null
-  unit_type: 'seconds' | 'boolean' | 'score'
+  name_he: string
+  icon: string | null
+  required_time_seconds: number
 }
 
 interface Class {
@@ -46,8 +46,8 @@ export default function DataEntryPage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
   // Step 1 data
-  const [trainingTypes, setTrainingTypes] = useState<TrainingType[]>([])
-  const [selectedTrainingType, setSelectedTrainingType] = useState<TrainingType | null>(null)
+  const [activities, setActivities] = useState<Activity[]>([])
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
 
   // Step 2 data
   const [availableClasses, setAvailableClasses] = useState<Class[]>([])
@@ -86,19 +86,31 @@ export default function DataEntryPage() {
 
         setUserProfile(profile)
 
-        // Get active training types
-        const { data: types, error: typesError } = await supabase
-          .from('training_types')
-          .select('id, name, category, unit_type')
-          .eq('is_active', true)
-          .order('display_order')
-
-        if (typesError) {
-          setError('שגיאה בטעינת סוגי אימון')
+        // Get active company activities (scoped to user's company)
+        if (!profile.company_id && profile.role !== 'system_admin') {
+          setError('לא נמצא מזהה פלוגה')
           return
         }
 
-        setTrainingTypes(types || [])
+        let activitiesQuery = supabase
+          .from('company_activities')
+          .select('id, name_he, icon, required_time_seconds')
+          .eq('is_active', true)
+          .order('name_he')
+
+        // Scope to company (except system_admin who sees all)
+        if (profile.role !== 'system_admin' && profile.company_id) {
+          activitiesQuery = activitiesQuery.eq('company_id', profile.company_id)
+        }
+
+        const { data: activitiesData, error: activitiesError } = await activitiesQuery
+
+        if (activitiesError) {
+          setError('שגיאה בטעינת פעילויות')
+          return
+        }
+
+        setActivities(activitiesData || [])
 
         // If user is מכ״י (class leader), lock to their class
         if (profile.role === 'class' && profile.class_id) {
@@ -166,9 +178,9 @@ export default function DataEntryPage() {
     setSoldiers(data || [])
   }
 
-  // Step 1: Select training type
-  function handleTrainingTypeSelect(trainingType: TrainingType) {
-    setSelectedTrainingType(trainingType)
+  // Step 1: Select activity
+  function handleActivitySelect(activity: Activity) {
+    setSelectedActivity(activity)
     setStep('class-selection')
   }
 
@@ -181,15 +193,15 @@ export default function DataEntryPage() {
 
   // Step 3: Save soldier attempt
   async function handleSaveSoldierAttempt(soldierId: string, value: number | boolean) {
-    if (!selectedTrainingType) return
+    if (!selectedActivity) return
 
-    await saveTrainingAttempt(soldierId, selectedTrainingType.id, value)
+    await saveTrainingAttempt(soldierId, selectedActivity.id, value)
   }
 
   // Navigation
-  function handleBackToTrainingTypes() {
+  function handleBackToActivities() {
     setStep('training-type')
-    setSelectedTrainingType(null)
+    setSelectedActivity(null)
     setSelectedClass(null)
     setSoldiers([])
   }
@@ -227,27 +239,27 @@ export default function DataEntryPage() {
   return (
     <div className="min-h-screen">
       {step === 'training-type' && (
-        <TrainingTypeGrid trainingTypes={trainingTypes} onSelect={handleTrainingTypeSelect} />
+        <TrainingTypeGrid activities={activities} onSelect={handleActivitySelect} />
       )}
 
-      {step === 'class-selection' && selectedTrainingType && (
+      {step === 'class-selection' && selectedActivity && (
         <ClassSelector
           classes={availableClasses}
           lockedClassId={lockedClass?.id}
           lockedClassName={lockedClass?.name}
-          trainingTypeName={selectedTrainingType.name}
-          onBack={handleBackToTrainingTypes}
+          trainingTypeName={selectedActivity.name_he}
+          onBack={handleBackToActivities}
           onNext={handleClassSelect}
         />
       )}
 
-      {step === 'soldier-entry' && selectedTrainingType && selectedClass && (
+      {step === 'soldier-entry' && selectedActivity && selectedClass && (
         <SoldierEntryList
           soldiers={soldiers}
           className={selectedClass.name}
-          trainingTypeName={selectedTrainingType.name}
-          trainingTypeId={selectedTrainingType.id}
-          unitType={selectedTrainingType.unit_type}
+          trainingTypeName={selectedActivity.name_he}
+          trainingTypeId={selectedActivity.id}
+          unitType="seconds"
           onBack={handleBackToClassSelection}
           onSave={handleSaveSoldierAttempt}
         />

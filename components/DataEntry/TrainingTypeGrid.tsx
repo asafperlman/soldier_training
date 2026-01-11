@@ -1,63 +1,37 @@
 'use client'
 
-import { EMPTY_STATES } from '@/lib/constants'
 import { EmptyState } from '@/components/Common/EmptyState'
 
-interface TrainingType {
+interface Activity {
   id: string
-  name: string
-  category: string | null
-  unit_type: 'seconds' | 'boolean' | 'score'
+  name_he: string
+  icon: string | null
+  required_time_seconds: number
 }
 
 interface TrainingTypeGridProps {
-  trainingTypes: TrainingType[]
-  onSelect: (trainingType: TrainingType) => void
+  activities: Activity[]
+  onSelect: (activity: Activity) => void
 }
 
-export function TrainingTypeGrid({ trainingTypes, onSelect }: TrainingTypeGridProps) {
-  if (trainingTypes.length === 0) {
-    return <EmptyState message={EMPTY_STATES.NO_TRAINING_TYPES} />
+export function TrainingTypeGrid({ activities, onSelect }: TrainingTypeGridProps) {
+  if (activities.length === 0) {
+    return <EmptyState message="אין פעילויות זמינות" />
   }
 
-  const getUnitLabel = (unitType: string) => {
-    switch (unitType) {
-      case 'seconds':
-        return 'שניות'
-      case 'boolean':
-        return 'ביצוע'
-      case 'score':
-        return 'ציון'
-      default:
-        return ''
-    }
-  }
-
-  const getIcon = (category: string | null) => {
-    // Map categories to icons
-    switch (category) {
-      case 'resuscitation':
-        return '💓'
-      case 'trauma':
-        return '🩹'
-      case 'evacuation':
-        return '🚑'
-      case 'assessment':
-        return '📋'
-      default:
-        return '🎯'
-    }
+  const getIcon = (icon: string | null) => {
+    return icon || '🎯' // Default icon if none specified
   }
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-6 text-center">בחר סוג אימון</h1>
+      <h1 className="text-2xl font-bold mb-6 text-center">בחר פעילות</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {trainingTypes.map((type) => (
+        {activities.map((activity) => (
           <button
-            key={type.id}
-            onClick={() => onSelect(type)}
+            key={activity.id}
+            onClick={() => onSelect(activity)}
             className="
               flex flex-col items-center justify-center
               p-4 min-h-[120px]
@@ -72,13 +46,13 @@ export function TrainingTypeGrid({ trainingTypes, onSelect }: TrainingTypeGridPr
             style={{ minHeight: '44px' }} // Ensure touch target
           >
             <span className="text-3xl mb-2" role="img" aria-label="icon">
-              {getIcon(type.category)}
+              {getIcon(activity.icon)}
             </span>
             <span className="text-base font-semibold text-center mb-1 line-clamp-2">
-              {type.name}
+              {activity.name_he}
             </span>
             <span className="text-xs text-gray-600 dark:text-gray-400 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">
-              {getUnitLabel(type.unit_type)}
+              {activity.required_time_seconds} שניות
             </span>
           </button>
         ))}
